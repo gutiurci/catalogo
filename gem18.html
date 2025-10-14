@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Productos Dinámico con Pedido</title>
+    <style>
+        /* ------------------ ESTILOS GENERALES ------------------ */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f8f8;
+            display: flex; 
+        }
+        
+        /* Contenedor principal del Catálogo */
+        #main-content {
+            flex-grow: 1;
+            min-width: 65%; 
+            max-width: 1200px;
+        }
+
+        /* ------------------ ESTILOS DEL CARRITO (MI PEDIDO) ------------------ */
+        #cart-sidebar {
+            width: 35%; 
+            max-width: 400px;
+            background-color: #fff;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            position: sticky; 
+            top: 0;
+            height: 100vh; 
+            overflow-y: auto; 
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #cart-sidebar h2 {
+            border-bottom: 2px solid #E91E63;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        #orderList {
+            list-style: none;
+            padding: 0;
+        }
+
+        #orderList li {
+            padding: 10px 0;
+            border-bottom: 1px dotted #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remove-item-btn {
+            background: none;
+            border: none;
+            color: red;
+            cursor: pointer;
+            font-size: 18px;
+            margin-left: 10px;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-buttons button {
+            padding: 10px;
+            font-size: 16px;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #sendEmailBtn {
+            background-color: #3f51b5; 
+        }
+
+        #sendWhatsappBtn {
+            background-color: #4CAF50; 
+        }
+
+        /* ------------------ MENÚ DE PESTAÑAS (NAV) ------------------ */
+        .tabs-nav {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .tabs-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            max-width: 1200px;
+        }
+
+        .tabs-nav li a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 15px 20px;
+            display: block;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tabs-nav li a:hover, .tabs-nav li a.active {
+            color: #E91E63;
+            border-bottom-color: #E91E63;
+        }
+        
+        /* ------------------ CONTENIDO DE PESTAÑAS Y CUADRÍCULA ------------------ */
+        .tab-content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 10px 0;
+        }
+
+        .product-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .product-card.hidden {
+            display: none !important;
+        }
+
+        .product-card img {
+            width: 100%;
+            max-height: 200px; 
+            height: auto;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .add-to-order-btn {
+            background-color: #00bcd4; 
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            margin-top: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+            width: 90%;
+            margin-left: 5%;
+        }
+
+        .add-to-order-btn:hover {
+            background-color: #0097a7;
+        }
+        
+        /* Selector de Código */
+        .code-selector {
+            margin-bottom: 10px;
+        }
+
+        .code-selector select {
+            width: 90%;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+        }
+        
+        /* ------------------ ESTILOS DEL MODAL/LIGHTBOX ------------------ */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.9);
+        }
+
+        .modal-content-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 90vw;
+            max-height: 90vh;
+            text-align: center;
+            overflow: hidden; 
+        }
+
+        .modal-content {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            max-height: 80vh; 
+            height: auto;
+            object-fit: contain;
+            transition: transform 0.2s ease; 
+        }
+        
+        /* Controles de zoom y pie de foto */
+        .modal-controls {
+            position: fixed; 
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1005;
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #caption {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        #zoomRange {
+            width: 150px;
+            cursor: grab;
+        }
+        
+        .prev, .next {
+            cursor: pointer;
+            position: fixed; 
+            top: 50%;
+            width: 50px;
+            padding: 16px 0;
+            margin-top: -50px;
+            color: white;
+            font-weight: bold;
+            font-size: 30px;
+            transition: 0.6s ease;
+            user-select: none;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1004; 
+            text-align: center;
+        }
+
+        .prev {
+            left: 5%; 
+            border-radius: 5px 0 0 5px;
+        }
+
+        .next {
+            right: 5%; 
+            border-radius: 0 5px 5px 0;
+        }
+
+        .prev:hover, .next:hover {
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .close {
+            position: fixed;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            z-index: 1006;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #bbb;
+        }
+
+        /* MEDIA QUERIES para Móviles */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            #cart-sidebar {
+                width: 100%;
+                max-width: 100%;
+                position: relative; 
+                height: auto;
+                order: 2; 
+            }
+            #main-content {
+                order: 1; 
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-content">
+        <nav class="tabs-nav">
+            <ul id="tabs-list"></ul>
+        </nav>
+        <div class="tab-content" id="tab-content-container"></div>
+    </div>
+
+    <div id="cart-sidebar">
+        <h2>🛍️ Mi Pedido</h2>
+        <ul id="orderList">
+            <li id="empty-cart-message">El pedido está vacío.</li>
+        </ul>
+
+        <div class="action-buttons">
+            <button id="sendWhatsappBtn" onclick="sendOrder('whatsapp')">Enviar Pedido por WhatsApp</button>
+            <button id="sendEmailBtn" onclick="sendOrder('email')">Enviar Pedido por Correo</button>
+        </div>
+    </div>
+
+
+    <div id="imageModal" class="modal">
+        <span class="close" id="closeModalBtn">&times;</span>
+        <div class="modal-controls">
+            <span id="caption"></span>
+            <label for="zoomRange">Zoom:</label>
+            <input type="range" id="zoomRange" min="1" max="4" value="1" step="0.1">
+        </div>
+        <a class="prev" onclick="prevImage()">&#10094;</a>
+        <a class="next" onclick="nextImage()">&#10095;</a>
+        <div class="modal-content-wrapper">
+            <img class="modal-content" id="img01">
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // === DATOS PROCESADOS DEL CSV (imagen y codigo.xlsx - Sheet1.csv) ===
+        // === LA COLUMNA 'PÁGINA' HA SIDO ELIMINADA DE LA ESTRUCTURA DE DATOS ===
+        // =========================================================================
+
+        // Mapeo de imagen a sus códigos (solo código)
+        const imageCodeMap = {
+        'capi003.jpg':['46984'],
+'capi004.jpg':['47262'],
+'capi005.jpg':['44968'],
+'capi007.jpg':['46403',' 46362',' 46402',' 46404'],
+'capi008.jpg':['00000',' 44967',' 44955',' 44958'],
+'capi009.jpg':['77965',' 44960'],
+'capi011.jpg':['44965',' 34390',' 44966',' 46624',' 44961',' 45438',' 44957',' 44964',' 44962'],
+'capi014.jpg':['46371',' 46383',' 40844',' 40775',' 38602',' 38601',' 47328',' 33142',' 43926'],
+'capi015.jpg':['46985'],
+'capi016.jpg':['46622',' 45436'],
+'cor013.jpg':['47543',' 41493',' 41277'],
+'corp001.jpg':['47217',' 47013'],
+'corp002.jpg':['46381',' 41303'],
+'corp003.jpg':['41505'],
+'corp004.jpg':['47426',' 46983'],
+'corp005.jpg':['44953',' 38873',' 55400'],
+'corp006.jpg':['46969',' 47224',' 47669',' 46971',' 35957',' 35958'],
+'corp007.jpg':['44370',' 41819',' 41817',' 47532'],
+'corp008.jpg':['44370',' 41819',' 41817',' 47532'],
+'corp010.jpg':['46367',' 46965',' 46966',' 47452',' 46964',' 47451',' 47099'],
+'corp011.jpg':['46639',' 47446',' 47440',' 46365',' 41519'],
+'corp012.jpg':['41338',' 41292',' 41295',' 41568',' 41488',' 42991',' 41490',' 54300'],
+'corp014.jpg':['47008',' 46981'],
+'corp015.jpg':['46970'],
+'faci005.jpg':['41034'],
+'faci006.jpg':['41033',' 42425',' 41070',' 41075',' 44098',' 44285'],
+'faci007.jpg':['41029',' 41048',' 41044',' 44098'],
+'faci008.jpg':['10490',' 13900',' 41057',' 41058'],
+'faci009.jpg':['41037'],
+'faci010.jpg':['41035',' 41040',' 41039',' 41075'],
+'faci011.jpg':['44990',' 43691',' 45592',' 45923',' 45608',' 41070',' 41075',' 44098',' 44265'],
+'faci012.jpg':['82723'],
+'faci015.jpg':['42263',' 42444'],
+'faci016.jpg':['27420'],
+'faci017.jpg':['47103'],
+'faci019.jpg':['46134',' 46135',' 46136',' 46137'],
+'faci020.jpg':['47666'],
+'faci021.jpg':['47526',' 47525'],
+'faci023.jpg':['44484'],
+'faci024.jpg':['43906',' 43908'],
+'faci025.jpg':['47003',' 46072',' 46070',' 47002',' 47001',' 46999'],
+'faci026.jpg':['46991',' 46990'],
+'faci027.jpg':['41671',' 41674',' 41672',' 41675',' 41673',' 41676',' 47519',' 42881'],
+'faci028.jpg':['41353',' 40670',' 59300',' 47520',' 41365'],
+'faci029.jpg':['47529',' 21339',' 13659',' 18437'],
+'faci030.jpg':['47007',' 47005',' 47006'],
+'faci031.jpg':['41283',' 45291',' 45248',' 34843',' 45292',' 45326',' 43909',' 45245',' 34849',' 46543',' 45243',' 34845',' 23378',' 34841',' 30568'],
+'faci032.jpg':['45784',' 45785'],
+'faci033.jpg':['46900'],
+'faci034.jpg':['45149',' 45290',' 45289',' 45138',' 45152'],
+'faci042.jpg':['12760'],
+'faci043.jpg':['12760',' 36152'],
+'faci046.jpg':['42450',' 42445'],
+'faci051.jpg':['42548',' 42549'],
+'frag004.jpg':['40667'],
+'frag006.jpg':['42599'],
+'frag007.jpg':['35651',' 44319'],
+'frag009.jpg':['38533',' 42968',' 35679',' 35653',' 46043',' 35649',' 42815',' 42785',' 42520',' 42514',' 38497',' 43118',' 46064',' 38552',' 44308',' 30468',' 42816'],
+'frag011.jpg':['42519'],
+'frag012.jpg':['33650'],
+'frag013.jpg':['66800',' 47502',' 47514'],
+'frag015.jpg':['46792',' 46795',' 68500'],
+'frag016.jpg':['88581',' 30536'],
+'frag017.jpg':['42508'],
+'frag018.jpg':['37772'],
+'frag019.jpg':['47501',' 47206'],
+'frag020.jpg':['10990'],
+'frag021.jpg':['38526'],
+'frhm003.jpg':['35665'],
+'grat001.jpg':['42548',' 42549'],
+'mano001.jpg':['42288',' 41195',' 41760',' 41758',' 43185'],
+'mano002.jpg':['45800',' 46642',' 46731',' 45799',' 46643'],
+'mano003.jpg':['45858',' 45859'],
+'mano004.jpg':['46219'],
+'mano005.jpg':['46968'],
+'mano007.jpg':['46968'],
+'maqu001.jpg':['37736',' 37734',' 37735'],
+'maqu003.jpg':['44547'],
+'maqu004.jpg':['43416',' 47826'],
+'maqu005.jpg':['47835'],
+'maqu006.jpg':['42780'],
+'maqu010.jpg':['46395',' 46396',' 46394'],
+'maqu011.jpg':['46906',' 46907',' 46908',' 46912',' 46913',' 46914',' 46909',' 46910',' 46911',' 46916',' 17825'],
+'maqu012.jpg':['47827',' 47838',' 47828'],
+'maqu013.jpg':['38870',' 38864',' 33367'],
+'maqu014.jpg':['45361',' 45364'],
+'maqu015.jpg':['46351',' 46352'],
+'maqu017.jpg':['40898'],
+'maqu018.jpg':['47840'],
+'maqu019.jpg':['43243',' 43244',' 43245',' 43246',' 43247',' 43248',' 43249'],
+'maqu020.jpg':['32919',' 32920',' 32921',' 32077'],
+'maqu021.jpg':['42118',' 42236',' 42237',' 42238',' 42112',' 42239',' 42113',' 44833',' 44834',' 42101',' 42102',' 42103',' 42104',' 42105',' 42106',' 42107',' 41107',' 41108'],
+'maqu022.jpg':['44915',' 44655'],
+'maqu023.jpg':['46329',' 46330',' 46331',' 46332',' 46333',' 46334',' 46940',' 41991',' 41990',' 41989',' 43302',' 73307',' 46447',' 46595',' 43985',' 43986',' 43987',' 32138',' 46437',' 46587',' 46588',' 46592',' 47414',' 38987'],
+'maqu024.jpg':['44821',' 44822',' 44823',' 44824',' 44825',' 44826',' 44827',' 44828',' 44829'],
+'maqu025.jpg':['46615',' 47837'],
+'maqu027.jpg':['44288',' 46615'],
+'supl001.jpg':['45273'],
+'supl004.jpg':['38556'],
+'supl006.jpg':['29699'],
+'supl009.jpg':['20000',' 42498'],
+'supl010.jpg':['20745',' 00035',' 01025',' 25300']
+
+        };
+
+        const uniqueImageList = Object.keys(imageCodeMap);
+
+        const prefixMap = {
+            'faci': 'Cuidado Facial',
+            'Maqu': 'Maquillaje',
+            'Frag': 'Fragancias',
+            'Frhm': 'Fragancias hombre',
+
+            'capi': 'Capilar',
+            'Supl': 'Suplementos',
+            'corp': 'Cuerpo',
+            'mano': 'Manos y Uñas',
+            'otro': 'Otros'
+        };
+        
+        let currentTabImages = []; 
+        let currentIndex = 0;
+        const modal = document.getElementById("imageModal");
+        const modalImg = document.getElementById("img01");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+        const captionText = document.getElementById("caption"); 
+        const zoomRange = document.getElementById("zoomRange");
+        const modalWrapper = document.querySelector('.modal-content-wrapper');
+        
+        let order = []; 
+        const orderListElement = document.getElementById('orderList');
+
+        // =========================================================================
+        // === FUNCIONES DEL PEDIDO (CARRITO) ===
+        // =========================================================================
+
+        /**
+         * Añade un producto con un código específico al pedido.
+         */
+        window.addToOrder = function(fileName, code) {
+            // Ya no recibe ni almacena 'page'
+            order.push({ fileName: fileName, code: code });
+            updateOrderDisplay();
+        }
+
+        /**
+         * Elimina un producto del pedido por su índice.
+         */
+        window.removeFromOrder = function(index) {
+            order.splice(index, 1);
+            updateOrderDisplay();
+        }
+
+        /**
+         * Renderiza la lista de productos en el carrito (Solo código).
+         */
+        function updateOrderDisplay() {
+            orderListElement.innerHTML = '';
+            
+            if (order.length === 0) {
+                orderListElement.innerHTML = '<li id="empty-cart-message">El pedido está vacío.</li>';
+                return;
+            }
+
+            order.forEach((item, index) => {
+                const listItem = document.createElement('li');
+                // MOSTRAR SOLO EL CÓDIGO
+                listItem.innerHTML = `
+                    <span>Cód: ${item.code}</span>
+                    <button class="remove-item-btn" onclick="removeFromOrder(${index})">
+                        &times;
+                    </button>
+                `;
+                orderListElement.appendChild(listItem);
+            });
+        }
+        
+        /**
+         * Prepara el mensaje del pedido (Solo código).
+         */
+        function getOrderMessage() {
+            if (order.length === 0) {
+                return "¡Hola! Quisiera realizar un pedido, pero mi carrito está vacío. 🛒";
+            }
+
+            let message = "¡Hola! Quisiera hacer un pedido con los siguientes productos:\n\n";
+            order.forEach(item => {
+                // SOLO AGREGAR EL CÓDIGO al mensaje de envío
+                message += `- Código: ${item.code}\n`;
+            });
+            message += "\n¡Gracias!";
+            return message;
+        }
+
+        /**
+         * Envía el pedido a través de WhatsApp (pide el número) o Correo.
+         */
+        window.sendOrder = function(type) {
+            const message = getOrderMessage();
+            const encodedMessage = encodeURIComponent(message);
+            
+            if (order.length === 0) {
+                alert("Tu pedido está vacío. Por favor, añade productos.");
+                return;
+            }
+
+            if (type === 'whatsapp') {
+                // *** IMPLEMENTACIÓN DE SOLICITAR EL NÚMERO DE TELÉFONO ***
+                const phoneNumber = prompt("Por favor, introduce el número de WhatsApp (con código de país, sin '+' ni espacios. Ej: 51999999999):");
+                
+                if (phoneNumber) {
+                    const cleanNumber = phoneNumber.replace(/[^0-9]/g, ''); // Limpiar el número de caracteres no numéricos
+                    if (cleanNumber.length > 5) { // Una verificación básica
+                        window.open(`https://wa.me/${cleanNumber}?text=${encodedMessage}`, '_blank');
+                    } else {
+                         alert("Número de teléfono inválido.");
+                    }
+                } else {
+                    alert("Envío de WhatsApp cancelado.");
+                }
+            } else if (type === 'email') {
+                const subject = encodeURIComponent("Nuevo Pedido de Catálogo");
+                // *** REEMPLAZA 'correo@ejemplo.com' CON TU DIRECCIÓN DE CORREO ***
+                const recipient = 'correo@ejemplo.com'; 
+                window.location.href = `mailto:${recipient}?subject=${subject}&body=${encodedMessage}`;
+            }
+        }
+
+        // =========================================================================
+        // === FUNCIONES DE RENDERIZADO Y LÓGICA GENERAL ===
+        // =========================================================================
+        
+        window.handleImageError = function(imgElement) {
+            imgElement.onerror = null; 
+            const card = imgElement.closest('.product-card');
+            if (card) {
+                card.classList.add('hidden');
+            }
+        }
+        
+        function applyZoom(scale) {
+            modalImg.style.transform = `scale(${scale})`;
+            if (scale > 1) {
+                modalWrapper.style.overflow = 'auto'; 
+                modalImg.style.cursor = 'grab';
+            } else {
+                modalWrapper.style.overflow = 'hidden';
+                modalImg.style.cursor = 'default';
+                modalWrapper.scrollTop = 0;
+                modalWrapper.scrollLeft = 0;
+            }
+        }
+        
+        zoomRange.addEventListener('input', (e) => {
+            applyZoom(e.target.value);
+        });
+
+        function updateModalImage(index) {
+            if (currentTabImages.length === 0) return;
+            currentIndex = (index + currentTabImages.length) % currentTabImages.length;
+            modalImg.src = currentTabImages[currentIndex];
+            captionText.textContent = `${currentIndex + 1} de ${currentTabImages.length}`;
+            zoomRange.value = 1; 
+            applyZoom(1); 
+        }
+
+        window.openModal = function(imageSrc, tabId) {
+            const activePane = document.getElementById(tabId);
+            if (!activePane) return;
+            
+            currentTabImages = Array.from(activePane.querySelectorAll('.product-card:not(.hidden) img'))
+                                    .map(img => img.src);
+            
+            if (currentTabImages.length === 0) return; 
+
+            const baseFileName = imageSrc.substring(imageSrc.lastIndexOf('/') + 1);
+            currentIndex = currentTabImages.findIndex(src => src.includes(baseFileName));
+            
+            if (currentIndex === -1) currentIndex = 0;
+
+            modal.style.display = "block";
+            updateModalImage(currentIndex);
+        }
+
+        window.prevImage = function() {
+            updateModalImage(currentIndex - 1);
+        }
+
+        window.nextImage = function() {
+            updateModalImage(currentIndex + 1);
+        }
+
+        closeModalBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+        
+        function classifyFiles(files) {
+            const classified = {};
+            
+            for (const key in prefixMap) {
+                classified[prefixMap[key]] = [];
+            }
+            
+            files.forEach(fileName => {
+                const prefix = fileName.substring(0, 4).toLowerCase(); 
+                for (const mapPrefix in prefixMap) {
+                    if (prefix.startsWith(mapPrefix.toLowerCase())) {
+                        const tabName = prefixMap[mapPrefix];
+                        classified[tabName].push({ fileName: fileName });
+                        return;
+                    }
+                }
+            });
+            return classified;
+        }
+
+        function renderProductTabs() {
+            const categorizedFiles = classifyFiles(uniqueImageList);
+            const tabsList = document.getElementById('tabs-list');
+            const contentContainer = document.getElementById('tab-content-container');
+            let isFirstTab = true;
+
+            for (const tabName in categorizedFiles) {
+                if (categorizedFiles[tabName].length === 0) continue;
+                
+                const tabId = tabName.replace(/\s+/g, '-').toLowerCase();
+                const isActive = isFirstTab ? 'active' : '';
+
+                // Crear Pestaña
+                const tabItem = document.createElement('li');
+                tabItem.innerHTML = `<a href="#${tabId}" class="${isActive}" data-tab="${tabId}">${tabName}</a>`;
+                tabsList.appendChild(tabItem);
+
+                // Crear Contenedor de Contenido
+                const tabPane = document.createElement('div');
+                tabPane.id = tabId;
+                tabPane.className = `tab-pane ${isActive}`;
+                
+                const grid = document.createElement('div');
+                grid.className = 'product-grid';
+
+                categorizedFiles[tabName].forEach(product => {
+                    const fileName = product.fileName;
+                    const imagePath = `./images/${fileName}`; 
+                    
+                    const productCard = document.createElement('div');
+                    productCard.className = 'product-card';
+                    
+                    let codeSelectorHtml = '';
+                    const codes = imageCodeMap[fileName] || []; 
+
+                    if (codes.length > 0) {
+                        // Si hay códigos, crea el selector
+                        codeSelectorHtml = `
+                            <div class="code-selector">
+                                <select id="select-${fileName.replace('.', '_')}" required>
+                                    ${codes.map(code => 
+                                        // SOLO MOSTRAR EL CÓDIGO en el selector
+                                        `<option value="${code}">
+                                            Cód: ${code}
+                                        </option>`).join('')}
+                                </select>
+                            </div>
+                        `;
+                    } else {
+                        // Si no hay códigos, se usará el nombre del archivo como identificador
+                        codeSelectorHtml = `
+                            <div class="code-selector">
+                                <p style="font-size:12px; color:gray;">Sin códigos asociados</p>
+                            </div>
+                        `;
+                    }
+                    
+                    const selectId = `select-${fileName.replace('.', '_')}`;
+
+                    productCard.innerHTML = `
+                        <img src="${imagePath}" alt="${fileName}" 
+                             onclick="openModal('${imagePath}', '${tabId}')" 
+                             onerror="handleImageError(this)">
+                        ${codeSelectorHtml}
+                        <button class="add-to-order-btn" 
+                                onclick="
+                                    const selectElement = document.getElementById('${selectId}');
+                                    let code = selectElement ? selectElement.value : '${fileName}';
+                                    addToOrder('${fileName}', code); // Solo se pasa el código
+                                ">
+                            Añadir a Pedido
+                        </button>
+                    `;
+                    grid.appendChild(productCard);
+                });
+
+                tabPane.appendChild(grid);
+                contentContainer.appendChild(tabPane);
+                
+                isFirstTab = false;
+            }
+
+            // 2. Funcionalidad de Pestañas (Switching)
+            tabsList.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A' && e.target.closest('li')) {
+                    e.preventDefault();
+                    
+                    document.querySelectorAll('.tabs-nav a').forEach(a => a.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+                    e.target.classList.add('active');
+                    const targetId = e.target.getAttribute('data-tab');
+                    const targetPane = document.getElementById(targetId);
+                    if (targetPane) {
+                         targetPane.classList.add('active');
+                    }
+                }
+            });
+            
+            updateOrderDisplay();
+        }
+
+        document.addEventListener('DOMContentLoaded', renderProductTabs);
+    </script>
+
+</body>
+</html>
